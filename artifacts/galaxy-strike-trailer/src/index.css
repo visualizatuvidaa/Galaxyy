@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@400;600;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  --color-primary: #020818;
+  --color-secondary: #00f7ff;
+  --color-accent: #bf00ff;
+
+  --color-bg-light: #020818;
+  --color-bg-dark: #01040c;
+  --color-bg-muted: #0a1128;
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #00f7ff;
+  --color-text-muted: #bf00ff;
+  --color-text-inverse: #020818;
+
+  --color-success: #00f7ff;
+  --color-warning: #ffd700;
+  --color-error: #ff0055;
+
+  --font-display: 'Orbitron', sans-serif;
+  --font-body: 'Space Grotesk', sans-serif;
+}
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
+  --color-accent: var(--color-accent);
+  --color-bg-light: var(--color-bg-light);
+  --color-bg-dark: var(--color-bg-dark);
+  --color-bg-muted: var(--color-bg-muted);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-inverse: var(--color-text-inverse);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-error: var(--color-error);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-primary);
+  color: var(--color-text-primary);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 10px rgba(0, 247, 255, 0.7), 0 0 20px rgba(0, 247, 255, 0.5);
+}
+
+.text-glow-purple {
+  text-shadow: 0 0 10px rgba(191, 0, 255, 0.7), 0 0 20px rgba(191, 0, 255, 0.5);
+}
+
+.scanline {
+  background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+  background-size: 100% 4px;
+}

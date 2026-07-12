@@ -1,0 +1,27 @@
+kind = "video"
+previewPath = "/galaxy-strike-trailer/"
+title = "Galaxy Strike: Legacy — Trailer"
+version = "1.0.0"
+id = "artifacts/galaxy-strike-trailer"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/galaxy-strike-trailer/" ]
+localPort = 22295
+
+[services.development]
+run = "pnpm --filter @workspace/galaxy-strike-trailer run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/galaxy-strike-trailer", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/galaxy-strike-trailer/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22295"
+BASE_PATH = "/galaxy-strike-trailer/"
