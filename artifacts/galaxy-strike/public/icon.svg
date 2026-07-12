@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#020818"/>
+  <!-- Starfield -->
+  <circle cx="60" cy="80" r="2" fill="#ffffff" opacity="0.6"/>
+  <circle cx="140" cy="40" r="1.5" fill="#ffffff" opacity="0.5"/>
+  <circle cx="380" cy="70" r="2" fill="#ffffff" opacity="0.7"/>
+  <circle cx="450" cy="120" r="1.5" fill="#ffffff" opacity="0.4"/>
+  <circle cx="30" cy="200" r="1" fill="#ffffff" opacity="0.5"/>
+  <circle cx="480" cy="300" r="2" fill="#ffffff" opacity="0.6"/>
+  <circle cx="100" cy="420" r="1.5" fill="#ffffff" opacity="0.4"/>
+  <circle cx="420" cy="450" r="2" fill="#ffffff" opacity="0.5"/>
+  <!-- Neon glow ring -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="#00f7ff" stroke-width="2" opacity="0.3"/>
+  <circle cx="256" cy="256" r="195" fill="none" stroke="#00f7ff" stroke-width="1" opacity="0.15"/>
+  <!-- Engine exhaust glow -->
+  <ellipse cx="256" cy="400" rx="40" ry="20" fill="#00f7ff" opacity="0.15" filter="url(#glow)"/>
+  <ellipse cx="256" cy="410" rx="25" ry="14" fill="#00f7ff" opacity="0.25"/>
+  <!-- Engine flame particles -->
+  <ellipse cx="256" cy="390" rx="12" ry="28" fill="url(#flame)" opacity="0.9"/>
+  <ellipse cx="236" cy="385" rx="6" ry="16" fill="url(#flame2)" opacity="0.7"/>
+  <ellipse cx="276" cy="385" rx="6" ry="16" fill="url(#flame2)" opacity="0.7"/>
+  <!-- Ship body -->
+  <path d="M256 120 L320 340 L256 300 L192 340 Z" fill="url(#shipGrad)" stroke="#00f7ff" stroke-width="2"/>
+  <!-- Ship cockpit -->
+  <path d="M256 150 L285 280 L256 265 L227 280 Z" fill="url(#cockpitGrad)" stroke="#00f7ff" stroke-width="1" opacity="0.9"/>
+  <!-- Wing details -->
+  <path d="M192 340 L160 380 L220 360 L256 300 Z" fill="url(#wingGrad)" stroke="#00f7ff" stroke-width="1.5"/>
+  <path d="M320 340 L352 380 L292 360 L256 300 Z" fill="url(#wingGrad)" stroke="#00f7ff" stroke-width="1.5"/>
+  <!-- Wing neon lines -->
+  <line x1="192" y1="340" x2="160" y2="380" stroke="#00f7ff" stroke-width="1.5" opacity="0.8"/>
+  <line x1="320" y1="340" x2="352" y2="380" stroke="#00f7ff" stroke-width="1.5" opacity="0.8"/>
+  <!-- Cockpit window -->
+  <ellipse cx="256" cy="210" rx="18" ry="28" fill="#bf00ff" opacity="0.7"/>
+  <ellipse cx="256" cy="205" rx="10" ry="18" fill="#e0aaff" opacity="0.5"/>
+  <!-- Bullet being fired -->
+  <rect x="250" y="80" width="12" height="36" rx="6" fill="#00f7ff" opacity="0.9"/>
+  <rect x="252" y="76" width="8" height="12" rx="4" fill="#ffffff" opacity="0.8"/>
+  <!-- Glow on bullet -->
+  <rect x="248" y="78" width="16" height="40" rx="8" fill="#00f7ff" opacity="0.2"/>
+  <defs>
+    <linearGradient id="shipGrad" x1="256" y1="120" x2="256" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4488ff"/>
+      <stop offset="50%" stop-color="#2255cc"/>
+      <stop offset="100%" stop-color="#112288"/>
+    </linearGradient>
+    <linearGradient id="cockpitGrad" x1="256" y1="150" x2="256" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#88ccff"/>
+      <stop offset="100%" stop-color="#2255aa"/>
+    </linearGradient>
+    <linearGradient id="wingGrad" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#1144aa"/>
+      <stop offset="100%" stop-color="#082266"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#00f7ff"/>
+      <stop offset="100%" stop-color="#020818" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="flame2" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#00f7ff"/>
+      <stop offset="100%" stop-color="#020818" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+</svg>
