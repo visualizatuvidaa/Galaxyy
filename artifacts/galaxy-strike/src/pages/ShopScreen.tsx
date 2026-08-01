@@ -52,7 +52,7 @@ export default function ShopScreen({ onBack }: Props) {
 
   // ── Ship handler ───────────────────────────────────────────────────────────
   const handleShip = (key: string) => {
-    const ship = CONFIG.SHIPS[key];
+   const ship = CONFIG.SHIPS[key as keyof typeof CONFIG.SHIPS];
     if (!ship) return;
     if (save.selectedShip === key) return;
     if (save.unlockedShips.includes(key)) {
