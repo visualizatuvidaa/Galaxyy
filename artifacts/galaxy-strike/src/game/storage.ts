@@ -3,10 +3,15 @@ export interface SaveData {
   gems: number;
   highScore: number;
   highWave: number;
-  selectedShip: 'viper' | 'phantom' | 'titan';
+  currentWorld: number;
+  completedWorlds: number[];
+  newGamePlus: boolean;
+  ngPlusLevel: number;
+  selectedShip: string;
   unlockedShips: string[];
   selectedSkin: string;
   unlockedSkins: string[];
+  seenCinematics: string[];
   upgrades: {
     fireRate: number;
     damage: number;
@@ -16,6 +21,8 @@ export interface SaveData {
     weapon: number;   // 0=básico 1=doble 2=triple 3=misil 4=quad
     speed: number;    // 0-3 velocidad de movimiento
     luck: number;     // 0-3 probabilidad de drops
+    coinIncome: number;
+    criticalChance: number;
   };
   achievements: Record<string, boolean>;
   missions: {
@@ -43,10 +50,15 @@ const DEFAULT_SAVE: SaveData = {
   gems: 0,
   highScore: 0,
   highWave: 1,
+  currentWorld: 1,
+  completedWorlds: [],
+  newGamePlus: false,
+  ngPlusLevel: 0,
   selectedShip: 'viper',
   unlockedShips: ['viper'],
   selectedSkin: 'default',
   unlockedSkins: ['default'],
+  seenCinematics: [],
   upgrades: {
     fireRate: 0,
     damage: 0,
@@ -56,6 +68,8 @@ const DEFAULT_SAVE: SaveData = {
     weapon: 0,
     speed: 0,
     luck: 0,
+    coinIncome: 0,
+    criticalChance: 0,
   },
   achievements: {},
   missions: { date: '', items: [] },
@@ -105,6 +119,19 @@ export const saveGame = (data: Partial<SaveData>) => {
   } catch (e) {
     console.warn('Failed to save game', e);
   }
+};
+
+export const markWorldCompleted = (world: number) => {
+  const save = loadSave();
+  const completedWorlds = Array.from(new Set([...(save.completedWorlds || []), world]));
+  const isNgPlus = world >= 10;
+  const nextWorld = isNgPlus ? 1 : Math.max(save.currentWorld || 1, world + 1);
+  saveGame({
+    currentWorld: nextWorld,
+    completedWorlds,
+    newGamePlus: isNgPlus || Boolean(save.newGamePlus),
+    ngPlusLevel: isNgPlus ? (save.ngPlusLevel || 0) + 1 : save.ngPlusLevel || 0,
+  });
 };
 
 export const addCoins = (amount: number) => {

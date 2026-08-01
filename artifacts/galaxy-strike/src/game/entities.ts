@@ -105,6 +105,8 @@ export class Enemy extends Entity {
     this.fireRate = fireRate;
     this.spawnTime = performance.now();
     if (type === 'tank') { this.width = 50; this.height = 50; }
+    else if (type === 'interceptor') { this.width = 20; this.height = 18; }
+    else if (type === 'boss_mundo1') { this.width = 220; this.height = 120; }
     else if (type === 'boss_dreadnought') { this.width = 150; this.height = 80; }
     else if (type === 'boss_sentinel') { this.width = 100; this.height = 100; }
     else if (type === 'boss_nexus') { this.width = 200; this.height = 100; }
@@ -119,12 +121,21 @@ export class Enemy extends Entity {
     } else if (this.type === 'bomber') {
       this.y += this.vy * dt;
       this.x += this.vx * dt;
+    } else if (this.type === 'interceptor') {
+      this.y += this.vy * 1.8 * dt;
+      this.x += Math.sin(this.timeAlive * 11) * 170 * dt;
+      this.x += this.vx * dt;
     } else if (this.type === 'phantom') {
       this.x += Math.sin(this.timeAlive * 5) * 50 * dt;
       this.y += this.vy * dt;
     } else if (this.type === 'swarm') {
       this.y += this.vy * 1.5 * dt;
       this.x += Math.sin(this.timeAlive * 10) * 20 * dt;
+    } else if (this.type === 'boss_mundo1') {
+      if (this.y < 150) this.y += 40 * dt;
+      else this.x += Math.sin(this.timeAlive * 1.2) * 90 * dt;
+      this.y += Math.cos(this.timeAlive * 2) * 8 * dt;
+      if (this.hp < this.maxHp * 0.5) this.phase = 1;
     } else if (this.type === 'boss_dreadnought') {
       if (this.y < 150) this.y += 50 * dt;
       else this.x += Math.sin(this.timeAlive) * 50 * dt;

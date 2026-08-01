@@ -3,8 +3,9 @@ import { getWave } from './waves';
 import { Renderer } from './renderer';
 import { InputHandler } from './input';
 import { audio } from './audio';
-import { loadSave, saveGame, updateStats, SaveData } from './storage';
+import { loadSave, saveGame, updateStats, SaveData, markWorldCompleted } from './storage';
 import { CONFIG } from './config';
+import { getWorldDefinition } from './worlds';
 
 export class GameEngine {
   canvas: HTMLCanvasElement;
@@ -25,11 +26,13 @@ export class GameEngine {
   isPaused: boolean = false;
 
   wave: number = 1;
+  world: number = 1;
   enemiesToSpawn: number = 0;
   spawnTimer: number = 0;
   waveActive: boolean = false;
   waveClearDelay: number = 0;
   waveClearNotified: boolean = false;
+  worldComplete: boolean = false;
 
   coinsCollected: number = 0;
   gemsCollected: number = 0;
@@ -41,17 +44,19 @@ export class GameEngine {
   onUpdateHUD: ((hud: any) => void) | null = null;
   onWaveClear: ((wave: number) => void) | null = null;
   onWaveStart: ((wave: number) => void) | null = null;
+  onWorldComplete: ((world: number, stats: any) => void) | null = null;
 
   shakeAmount: number = 0;
   weaponLevel: number = 0;
   dropChance: number = 0.3;
   playerSpeed: number = 420;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, initialWorld: number = 1) {
     this.canvas = canvas;
     this.renderer = new Renderer(canvas);
     this.input = new InputHandler();
     this.saveData = loadSave();
+    this.world = initialWorld;
 
     // Apply upgrades
     this.weaponLevel = this.saveData.upgrades.weapon ?? 0;
@@ -60,8 +65,8 @@ export class GameEngine {
 
     const s = CONFIG.SHIPS[this.saveData.selectedShip] ?? CONFIG.SHIPS['viper'];
     const maxHp = CONFIG.UPGRADES.hp.effect(this.saveData.upgrades.hp) * s.hpMod;
-    const fireRate = CONFIG.UPGRADES.fireRate.effect(this.saveData.upgrades.fireRate);
-    const damage = CONFIG.UPGRADES.damage.effect(this.saveData.upgrades.damage);
+    const fireRate = CONFIG.UPGRADES.fireRate.effect(this.saveData.upgrades.fireRate) * s.fireRateMod;
+    const damage = CONFIG.UPGRADES.damage.effect(this.saveData.upgrades.damage) * s.damageMod;
 
     this.player = new Player(
       canvas.width / 2,
@@ -75,6 +80,9 @@ export class GameEngine {
 
     // Pass skin to renderer
     this.renderer.setSkin(this.saveData.selectedSkin ?? 'default');
+    const worldTheme = getWorldDefinition(this.world);
+    this.renderer.setWorldTheme(this.world);
+    audio.setTheme(worldTheme.musicTheme);
 
     this.input.onMoveCallback = (dx, dy) => {
       const speed = this.playerSpeed * s.speedMod;
@@ -83,7 +91,7 @@ export class GameEngine {
       this.player.y = Math.max(this.player.height / 2, Math.min(this.canvas.height - this.player.height / 2, this.player.y + dy));
     };
 
-    this.wave = 1;
+    this.wave = (this.world - 1) * 5 + 1;
     this.startWave();
   }
 
@@ -111,10 +119,44 @@ export class GameEngine {
     }
   }
 
+  startWorld(world: number) {
+    const save = loadSave();
+    const isNgPlus = world > 10;
+    const worldNumber = isNgPlus ? 1 : world;
+    this.world = worldNumber;
+    const worldTheme = getWorldDefinition(worldNumber);
+    this.renderer.setWorldTheme(worldNumber);
+    audio.setTheme(worldTheme.musicTheme);
+    this.wave = (worldNumber - 1) * 5 + 1;
+    this.enemies = [];
+    this.bullets = [];
+    this.collectibles = [];
+    this.particles = [];
+    this.player.x = this.canvas.width / 2;
+    this.player.y = this.canvas.height - 120;
+    this.player.hp = this.player.maxHp;
+    this.player.invulnerableTime = 0;
+    this.waveActive = false;
+    this.waveClearDelay = 0;
+    this.waveClearNotified = false;
+    this.worldComplete = false;
+    this.isPaused = false;
+    if (isNgPlus) {
+      saveGame({
+        newGamePlus: true,
+        ngPlusLevel: (save.ngPlusLevel || 0) + 1,
+        currentWorld: 1,
+      });
+      this.saveData = loadSave();
+    }
+    this.startWave();
+    if (this.onWaveStart) this.onWaveStart(this.wave);
+  }
+
   startWave() {
     const w = getWave(this.wave);
     this.enemiesToSpawn = w.enemyCount;
-    this.spawnTimer = w.spawnInterval;
+    this.spawnTimer = w.isBoss ? 0 : w.spawnInterval;
     this.waveActive = true;
     this.waveClearNotified = false;
   }
@@ -204,10 +246,13 @@ export class GameEngine {
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
         const w = getWave(this.wave);
-        const type = w.isBoss ? (w.bossType || 'boss_dreadnought') : w.types[Math.floor(Math.random() * w.types.length)];
-        const hp = (type.startsWith('boss') ? 1000 : 30) * w.baseHpMulti;
+        const worldDef = getWorldDefinition(this.world);
+        const type = w.isBoss ? (w.bossType || worldDef.bossType) : worldDef.enemyPool[Math.floor(Math.random() * worldDef.enemyPool.length)];
+        const difficulty = worldDef.difficulty * (this.saveData.newGamePlus ? 1.35 : 1) * (this.saveData.ngPlusLevel || 0 ? 1.15 : 1);
+        const hp = type === 'boss_mundo1' ? 420 * w.baseHpMulti * difficulty : type.startsWith('boss') ? 620 * w.baseHpMulti * difficulty : type === 'interceptor' ? 18 * w.baseHpMulti * difficulty : 30 * w.baseHpMulti * difficulty;
         const x = type.startsWith('boss') ? this.canvas.width / 2 : Math.random() * (this.canvas.width - 60) + 30;
-        this.enemies.push(new Enemy(x, -50, type, hp, 100 + this.wave * 5));
+        const vx = type === 'interceptor' ? (Math.random() > 0.5 ? 1 : -1) * (120 + this.wave * 6) : 0;
+        this.enemies.push(new Enemy(x, -50, type, hp, 100 + this.wave * 5, vx));
         this.enemiesToSpawn--;
         this.spawnTimer = w.spawnInterval;
       }
@@ -223,9 +268,23 @@ export class GameEngine {
         } else if (e.type === 'weaver' && Math.random() > 0.7) {
           this.bullets.push(new Bullet(e.x, e.y + e.height / 2, 320, 8, true));
           e.lastFired = performance.now();
+        } else if (e.type === 'interceptor' && Math.random() > 0.45) {
+          this.bullets.push(new Bullet(e.x, e.y + e.height / 2, 360, 6, true));
+          e.lastFired = performance.now();
         } else if (e.type === 'tank') {
           this.bullets.push(new Bullet(e.x - 10, e.y + e.height / 2, 250, 15, true, 6, 10));
           this.bullets.push(new Bullet(e.x + 10, e.y + e.height / 2, 250, 15, true, 6, 10));
+          e.lastFired = performance.now();
+        } else if (e.type === 'boss_mundo1') {
+          const spreadAngles = [-0.8, -0.45, 0, 0.45, 0.8];
+          for (const angle of spreadAngles) {
+            const bullet = new Bullet(e.x + Math.sin(angle) * 14, e.y + e.height / 2, 420, 18, true, 6, 10);
+            bullet.vx = Math.cos(angle) * 120;
+            this.bullets.push(bullet);
+          }
+          this.bullets.push(new Bullet(e.x, e.y + e.height / 2, 470, 24, true));
+          this.bullets.push(new Bullet(e.x - 26, e.y + e.height / 2, 380, 20, true, 6, 10));
+          this.bullets.push(new Bullet(e.x + 26, e.y + e.height / 2, 380, 20, true, 6, 10));
           e.lastFired = performance.now();
         } else if (e.type.startsWith('boss')) {
           this.bullets.push(new Bullet(e.x - 20, e.y + e.height / 2, 400, 20, true));
@@ -303,6 +362,26 @@ export class GameEngine {
               const types: any[] = ['shield', 'rapidfire', 'gem', 'nuke'];
               this.collectibles.push(new Collectible(e.x, e.y, types[Math.floor(Math.random() * types.length)]));
             }
+            const worldDef = getWorldDefinition(this.world);
+            const isCurrentWorldBoss = e.type === worldDef.bossType || (this.wave % 5 === 0 && e.type.startsWith('boss'));
+            if (isCurrentWorldBoss && !this.worldComplete) {
+              this.worldComplete = true;
+              this.isPaused = true;
+              const save = loadSave();
+              const nextWorld = this.world >= 10 ? 1 : Math.max(2, save.currentWorld || 1);
+              markWorldCompleted(this.world);
+              saveGame({ highScore: Math.max(save.highScore || 0, this.score), highWave: Math.max(save.highWave || 1, this.wave), coins: save.coins + this.coinsCollected, gems: save.gems + this.gemsCollected });
+              if (this.onWorldComplete) {
+                this.onWorldComplete(this.world, {
+                  score: this.score,
+                  coins: this.coinsCollected,
+                  gems: this.gemsCollected,
+                  kills: this.killCount,
+                  world: this.world,
+                  nextWorld,
+                });
+              }
+            }
           }
           break;
         }
@@ -368,9 +447,9 @@ export class GameEngine {
     this.particles = this.particles.filter(p => p.active);
 
     // Wave progression
-    if (this.waveActive && this.enemiesToSpawn <= 0 && this.enemies.length === 0) {
+    if (this.waveActive && this.enemiesToSpawn <= 0 && this.enemies.length <= 3) {
       this.waveActive = false;
-      this.waveClearDelay = 2.5;
+      this.waveClearDelay = this.saveData.newGamePlus ? 0.5 : 1;
       if (!this.waveClearNotified) {
         this.waveClearNotified = true;
         this.wavesCleared++;
@@ -389,11 +468,16 @@ export class GameEngine {
 
     if (this.onUpdateHUD) {
       const boss = this.enemies.find(e => e.type.startsWith('boss'));
+      const worldDef = getWorldDefinition(this.world);
       this.onUpdateHUD({
         hp: this.player.hp,
         maxHp: this.player.maxHp,
         score: this.score,
         wave: this.wave,
+        world: this.world,
+        worldName: worldDef.name,
+        worldSubtitle: worldDef.subtitle,
+        bossName: boss ? worldDef.bossName : '',
         bossHp: boss ? boss.hp : 0,
         bossMaxHp: boss ? boss.maxHp : 0,
         waveClearDelay: this.waveClearDelay,

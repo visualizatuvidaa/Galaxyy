@@ -55,6 +55,8 @@ export default function ShopScreen({ onBack }: Props) {
    const ship = CONFIG.SHIPS[key as keyof typeof CONFIG.SHIPS];
     if (!ship) return;
     if (save.selectedShip === key) return;
+    const hasWorldUnlock = (save.completedWorlds ?? []).includes(ship.unlockWorld);
+    if (!hasWorldUnlock) return showFlash(`Completa el mundo ${ship.unlockWorld} para desbloquear ${ship.name}`, false);
     if (save.unlockedShips.includes(key)) {
       saveGame({ selectedShip: key as any });
       refresh();
@@ -70,7 +72,7 @@ export default function ShopScreen({ onBack }: Props) {
     else updates.gems = save.gems - ship.cost;
     saveGame(updates);
     refresh();
-    showFlash(`¡${ship.name} comprada!`);
+    showFlash(`¡${ship.name} desbloqueada!`);
   };
 
   // ── Skin handler ───────────────────────────────────────────────────────────
@@ -265,41 +267,79 @@ export default function ShopScreen({ onBack }: Props) {
           const costIcon = ship.costType === 'coins' ? '🪙' : '💎';
           const currency = ship.costType === 'coins' ? save.coins : save.gems;
           const canAfford = currency >= ship.cost;
+          const worldReady = (save.completedWorlds ?? []).includes(ship.unlockWorld);
           return (
             <div key={key} className={`bg-[#0a1830] border-2 rounded-2xl overflow-hidden transition-all ${
               isSelected ? 'border-cyan-400/70 shadow-[0_0_16px_#00f7ff22]' : 'border-white/10'
             }`}>
               <div className="p-4 pb-3">
-                <div className="flex items-start justify-between mb-1">
-                  <span className="text-white font-black text-xl uppercase tracking-widest">{ship.name}</span>
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl border border-white/10 bg-black/20 flex items-center justify-center text-2xl"
+                      style={{ boxShadow: `0 0 18px ${ship.accent}55` }}>
+                      {ship.icon}
+                    </div>
+                    <div>
+                      <div className="text-white font-black text-lg uppercase tracking-wider">{ship.name}</div>
+                      <div className="text-[10px] text-cyan-300 font-bold">Mundo {ship.unlockWorld} · {worldReady ? 'Desbloqueada' : 'Bloqueada'}</div>
+                    </div>
+                  </div>
                   {isSelected && <span className="text-xs font-bold text-cyan-400 bg-cyan-900/60 border border-cyan-400/40 px-2 py-0.5 rounded-full">ACTIVA</span>}
                 </div>
-                <p className="text-gray-400 text-sm mb-3">{ship.desc}</p>
-                <div className="flex gap-4 text-xs">
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="text-gray-500">Vida</div>
-                    <div className="flex gap-0.5">{Array.from({ length: 5 }).map((_, i) => <div key={i} className={`w-2 h-2 rounded-full ${i < Math.round(ship.hpMod * 3) ? 'bg-red-400' : 'bg-white/10'}`} />)}</div>
+
+                <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-black/30 to-white/5 p-3 mb-3 overflow-hidden relative">
+                  <div className="absolute inset-0 opacity-70" style={{ background: `radial-gradient(circle at 20% 20%, ${ship.accent}66, transparent 55%)` }} />
+                  <div className="relative">
+                    <div className="text-[10px] uppercase tracking-[0.35em] text-white/60 mb-1">Vista previa</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-4xl animate-pulse" style={{ color: ship.accent }}>{ship.icon}</div>
+                      <div className="text-right text-[11px] text-gray-300">
+                        <div className="font-bold">Habilidad especial</div>
+                        <div>{ship.special}</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-[11px] text-gray-300">
+                      <span className="font-bold text-white">Ultimate:</span> {ship.ultimate} · {ship.ultimateCharge}
+                    </div>
                   </div>
-                  <div className="flex flex-col items-center gap-1">
+                </div>
+
+                <p className="text-gray-400 text-sm mb-3">{ship.desc}</p>
+                <div className="grid grid-cols-4 gap-2 text-xs mb-3">
+                  <div className="bg-white/5 rounded-xl p-2 text-center">
+                    <div className="text-gray-500">Vida</div>
+                    <div className="text-white font-black">{ship.hpMod.toFixed(2)}x</div>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-2 text-center">
                     <div className="text-gray-500">Vel</div>
-                    <div className="flex gap-0.5">{Array.from({ length: 5 }).map((_, i) => <div key={i} className={`w-2 h-2 rounded-full ${i < Math.round(ship.speedMod * 3) ? 'bg-cyan-400' : 'bg-white/10'}`} />)}</div>
+                    <div className="text-white font-black">{ship.speedMod.toFixed(2)}x</div>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-2 text-center">
+                    <div className="text-gray-500">Daño</div>
+                    <div className="text-white font-black">{ship.damageMod.toFixed(2)}x</div>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-2 text-center">
+                    <div className="text-gray-500">Cad.</div>
+                    <div className="text-white font-black">{ship.fireRateMod.toFixed(2)}x</div>
                   </div>
                 </div>
               </div>
               <div className="px-4 pb-4">
                 <button onClick={() => handleShip(key)}
-                  disabled={!isUnlocked && !canAfford}
+                  disabled={(!isUnlocked && !canAfford) || !worldReady}
                   className={`w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2
                     active:scale-95 transition-all ${
                     isSelected
                       ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/60'
                       : isUnlocked
                       ? 'bg-white/10 text-white hover:bg-white/20'
+                      : !worldReady
+                      ? 'bg-white/5 text-white/30 border border-white/10'
                       : canAfford
                       ? 'bg-purple-600 text-white shadow-[0_0_14px_#bf00ff44]'
                       : 'bg-white/5 text-white/25 border border-white/10'
                   }`}>
-                  {isSelected ? '✓ Equipada' : isUnlocked ? 'Equipar' : (
+                  {isSelected ? '✓ Equipada' : isUnlocked ? 'Equipar' : !worldReady ? `🔒 Mundo ${ship.unlockWorld}` : (
                     <><span>{costIcon}</span><span className={ship.costType === 'coins' ? 'text-yellow-400' : 'text-cyan-400'}>{ship.cost.toLocaleString()}</span><span className="text-white/60">{ship.costType === 'coins' ? 'monedas' : 'gemas'}</span></>
                   )}
                 </button>

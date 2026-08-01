@@ -1,5 +1,6 @@
 import { Entity, Player, Enemy, Bullet, Collectible, Particle } from './entities';
 import { CONFIG } from './config';
+import { getWorldDefinition } from './worlds';
 
 interface SkinColors {
   bodyColor: string;
@@ -8,12 +9,20 @@ interface SkinColors {
   glowColor: string;
 }
 
+interface WorldTheme {
+  bg: string;
+  starA: string;
+  starB: string;
+  accent: string;
+}
+
 export class Renderer {
   ctx: CanvasRenderingContext2D;
   canvas: HTMLCanvasElement;
   stars: { x: number; y: number; speed: number; size: number; twinkle: number }[] = [];
   time: number = 0;
   skin: SkinColors = CONFIG.SKINS['default'];
+  worldTheme: WorldTheme = { bg: '#020818', starA: '#aaddff', starB: '#ffffff', accent: '#00f7ff' };
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -31,7 +40,17 @@ export class Renderer {
 
   resize(w: number, h: number) { this.canvas.width = w; this.canvas.height = h; }
 
-  clear() { this.ctx.fillStyle = CONFIG.COLORS.BG; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); }
+  setWorldTheme(world: number) {
+    const worldDef = getWorldDefinition(world);
+    this.worldTheme = {
+      bg: worldDef.bg,
+      starA: worldDef.starA,
+      starB: worldDef.starB,
+      accent: worldDef.accent,
+    };
+  }
+
+  clear() { this.ctx.fillStyle = this.worldTheme.bg; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); }
 
   drawBackground(dt: number) {
     this.time += dt;
@@ -42,7 +61,7 @@ export class Renderer {
       if (star.y > this.canvas.height) { star.y = 0; star.x = Math.random() * this.canvas.width; }
       const alpha = Math.max(0.1, 0.4 + Math.sin(star.twinkle) * 0.3);
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = star.size > 2 ? '#aaddff' : '#ffffff';
+      ctx.fillStyle = star.size > 2 ? this.worldTheme.starA : this.worldTheme.starB;
       ctx.fillRect(star.x, star.y, star.size, star.size);
     }
     ctx.globalAlpha = 1.0;
@@ -151,14 +170,34 @@ export class Renderer {
     ctx.save();
     ctx.translate(enemy.x, enemy.y);
     switch (enemy.type) {
-      case 'drifter':  this._drawDrifter(ctx, enemy); break;
-      case 'weaver':   this._drawWeaver(ctx, enemy);  break;
-      case 'tank':     this._drawTank(ctx, enemy);    break;
-      case 'bomber':   this._drawBomber(ctx, enemy);  break;
-      case 'swarm':    this._drawSwarm(ctx, enemy);   break;
-      case 'phantom':  this._drawPhantom(ctx, enemy); break;
+      case 'drifter':      this._drawDrifter(ctx, enemy); break;
+      case 'weaver':       this._drawWeaver(ctx, enemy);  break;
+      case 'tank':         this._drawTank(ctx, enemy);    break;
+      case 'bomber':       this._drawBomber(ctx, enemy);  break;
+      case 'swarm':        this._drawSwarm(ctx, enemy);   break;
+      case 'phantom':      this._drawPhantom(ctx, enemy); break;
+      case 'interceptor':  this._drawInterceptor(ctx, enemy); break;
+      case 'boss_mundo1': this._drawWorldBoss(ctx, enemy); break;
       default: if (enemy.type.startsWith('boss')) this._drawBoss(ctx, enemy); else this._drawDrifter(ctx, enemy);
     }
+
+    const ratio = enemy.maxHp > 0 ? Math.max(0, Math.min(1, enemy.hp / enemy.maxHp)) : 0;
+    const barWidth = enemy.type.startsWith('boss') ? Math.max(enemy.width * 0.95, 120) : Math.max(enemy.width * 0.7, 18);
+    const barHeight = enemy.type.startsWith('boss') ? 6 : 4;
+    const barX = -barWidth / 2;
+    const barY = -enemy.height / 2 - 10;
+    let barColor = '#ef4444';
+    if (ratio > 0.6) barColor = '#22c55e';
+    else if (ratio > 0.35) barColor = '#facc15';
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    ctx.fillStyle = barColor;
+    ctx.fillRect(barX, barY, barWidth * ratio, barHeight);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barWidth, barHeight);
+
     ctx.restore();
   }
 
@@ -234,6 +273,30 @@ export class Renderer {
     this._clearGlow(ctx);
   }
 
+  private _drawInterceptor(ctx: CanvasRenderingContext2D, e: Enemy) {
+    const w = e.width, h = e.height;
+    this._glow(ctx, '#00eaff', 16);
+    ctx.beginPath();
+    ctx.moveTo(0, -h * 0.6);
+    ctx.lineTo(w * 0.48, h * 0.28);
+    ctx.lineTo(0, h * 0.45);
+    ctx.lineTo(-w * 0.48, h * 0.28);
+    ctx.closePath();
+    ctx.fillStyle = '#0a2244'; ctx.fill(); this._outline(ctx, '#000', 2.2);
+
+    ctx.beginPath();
+    ctx.moveTo(0, -h * 0.2);
+    ctx.lineTo(w * 0.22, h * 0.04);
+    ctx.lineTo(0, h * 0.22);
+    ctx.lineTo(-w * 0.22, h * 0.04);
+    ctx.closePath();
+    ctx.fillStyle = '#44ddff'; ctx.fill();
+
+    ctx.beginPath(); ctx.arc(0, -h * 0.02, 3.5, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+    ctx.beginPath(); ctx.arc(1.2, -h * 0.02, 1.8, 0, Math.PI * 2); ctx.fillStyle = '#000'; ctx.fill();
+    this._clearGlow(ctx);
+  }
+
   private _drawPhantom(ctx: CanvasRenderingContext2D, e: Enemy) {
     const w = e.width, h = e.height;
     ctx.globalAlpha = 0.35 + (Math.sin(e.timeAlive * 5) + 1) / 2 * 0.5;
@@ -242,6 +305,40 @@ export class Renderer {
     ctx.fillStyle = '#aaddff'; ctx.fill(); this._outline(ctx, '#003355', 2);
     for (const ex of [-w * 0.15, w * 0.15]) { ctx.beginPath(); ctx.arc(ex, -h * 0.1, 5, 0, Math.PI * 2); ctx.fillStyle = '#001133'; ctx.fill(); }
     this._clearGlow(ctx); ctx.globalAlpha = 1;
+  }
+
+  private _drawWorldBoss(ctx: CanvasRenderingContext2D, e: Enemy) {
+    const w = e.width, h = e.height;
+    this._glow(ctx, '#8b5cf6', 24);
+
+    const bg = ctx.createLinearGradient(-w * 0.5, -h * 0.5, w * 0.5, h * 0.5);
+    bg.addColorStop(0, '#1f1140');
+    bg.addColorStop(0.5, '#4c1d95');
+    bg.addColorStop(1, '#0f172a');
+    ctx.beginPath(); ctx.roundRect(-w * 0.5, -h * 0.45, w, h * 0.9, 16); ctx.fillStyle = bg; ctx.fill(); this._outline(ctx, '#000', 4);
+
+    const core = ctx.createRadialGradient(0, -h * 0.05, 0, 0, -h * 0.05, w * 0.45);
+    core.addColorStop(0, '#e9d5ff');
+    core.addColorStop(0.35, '#c084fc');
+    core.addColorStop(1, '#4c1d95');
+    ctx.beginPath(); ctx.roundRect(-w * 0.34, -h * 0.3, w * 0.68, h * 0.6, 10); ctx.fillStyle = core; ctx.fill(); this._outline(ctx, '#000', 3);
+
+    ctx.beginPath(); ctx.arc(0, -h * 0.04, w * 0.14, 0, Math.PI * 2); ctx.fillStyle = '#fef08a'; ctx.fill(); this._outline(ctx, '#000', 2);
+    ctx.beginPath(); ctx.arc(0, -h * 0.04, w * 0.05, 0, Math.PI * 2); ctx.fillStyle = '#1f2937'; ctx.fill();
+
+    for (const sx of [-w * 0.26, w * 0.26]) {
+      ctx.beginPath(); ctx.roundRect(sx - 8, -h * 0.02, 16, h * 0.25, 5); ctx.fillStyle = '#111827'; ctx.fill(); this._outline(ctx, '#000', 2);
+    }
+    ctx.beginPath(); ctx.roundRect(-w * 0.12, h * 0.32, w * 0.24, h * 0.16, 4); ctx.fillStyle = '#111827'; ctx.fill(); this._outline(ctx, '#000', 2);
+
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 / 6) * i - Math.PI / 6;
+      const r = w * 0.43;
+      ctx.beginPath(); ctx.arc(Math.cos(angle) * r, Math.sin(angle) * r, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#f59e0b'; ctx.fill();
+    }
+
+    this._clearGlow(ctx);
   }
 
   private _drawBoss(ctx: CanvasRenderingContext2D, e: Enemy) {
